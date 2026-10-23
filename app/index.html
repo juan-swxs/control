@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Control DAC · ESP32</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<div class="wrap">
+
+  <header>
+    <div>
+      <p class="eyebrow">Piñón · Cremallera</p>
+      <h1>Control DAC</h1>
+    </div>
+    <div class="connect">
+      <span class="status"><i class="dot" id="dot"></i><span id="st">Desconectado</span></span>
+      <button class="btn" id="btnConn">Conectar</button>
+    </div>
+  </header>
+
+  <section class="modebar">
+    <div class="modebar-text">
+      <p class="eyebrow">Sentido de medición · GPIO25</p>
+    </div>
+    <div class="toggle neg" id="toggle">
+      <span class="toggle-thumb"></span>
+      <button class="toggle-opt" data-dir="POS" id="optPos">▲ Positivo</button>
+      <button class="toggle-opt active" data-dir="NEG" id="optNeg">▼ Negativo</button>
+    </div>
+  </section>
+
+  <div id="banner" class="banner hidden"></div>
+
+  <div class="main-grid">
+
+    <div class="col-main">
+      <section class="grid">
+        <article class="stat">
+          <p class="eyebrow">Distancia</p>
+          <p class="num" id="x">0.000<span>mm</span></p>
+          <div class="track"><i id="bx"></i></div>
+          <p class="foot" id="vel">0.00 mm/s</p>
+        </article>
+
+        <article class="stat">
+          <p class="eyebrow">DAC auto <em>GPIO25</em></p>
+          <p class="num" id="va">0.000<span>V</span></p>
+          <div class="track"><i id="ba"></i></div>
+          <p class="foot" id="ra">raw 0/255</p>
+        </article>
+
+        <article class="stat">
+          <p class="eyebrow">DAC manual <em>GPIO26</em></p>
+          <p class="num accent" id="vm">0.000<span>V</span></p>
+          <div class="track"><i class="accent" id="bm"></i></div>
+          <p class="foot" id="rm">raw 0/255</p>
+        </article>
+      </section>
+
+      <section class="panel dark grow">
+        <div class="panel-head">
+          <p class="eyebrow light">Desplazamiento</p>
+          <span class="pill light" id="win">30 s</span>
+        </div>
+        <canvas id="cv"></canvas>
+      </section>
+    </div>
+
+    <div class="col-side">
+      <section class="panel dark fill">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow light">Salida manual</p>
+            <p class="num accent" id="sv">0.000<span>V</span></p>
+          </div>
+          <span class="pill light" id="sraw">raw 0/255</span>
+        </div>
+
+        <div class="slider-box">
+          <div class="bubble" id="bubble">0.00 V</div>
+          <input type="range" id="sl" min="0" max="255" value="0" step="1">
+          <div class="ticks"><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+        <div class="scale"><span>0 V</span><span>0.825 V</span><span>1.65 V</span><span>2.475 V</span><span>3.3 V</span></div>
+
+        <div class="btns">
+          <button data-mv="0">0 V</button>
+          <button data-mv="825">0.8 V</button>
+          <button data-mv="1650">1.65 V</button>
+          <button data-mv="2475">2.5 V</button>
+          <button data-mv="3300">3.3 V</button>
+          <button class="ghost" id="bz">Cero</button>
+        </div>
+      </section>
+    </div>
+
+  </div>
+
+  <footer>USB Serial · 115200 baudios · sin WiFi</footer>
+</div>
+
+<script src="script.js" defer></script>
+</body>
+</html>

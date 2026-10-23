@@ -1,0 +1,9 @@
+version: "1.0.0"
+description: Driver nativo para el DAC MCP4725 de 12 bits (I2C) basado únicamente en driver/i2c_master.h
+license: MIT
+tags:
+  - dac
+  - mcp4725
+  - i2c
+dependencies:
+  idf: ">=5.2.0"
