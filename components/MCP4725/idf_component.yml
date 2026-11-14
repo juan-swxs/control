@@ -6,4 +6,4 @@ tags:
   - mcp4725
   - i2c
 dependencies:
-  idf: ">=5.2.0"
+  idf: ">=5.3.0"

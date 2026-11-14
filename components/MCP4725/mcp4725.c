@@ -93,6 +93,8 @@ esp_err_t mcp4725_create(i2c_master_bus_handle_t bus, const mcp4725_config_t *cf
 {
     ESP_RETURN_ON_FALSE(bus && cfg && out, ESP_ERR_INVALID_ARG, TAG, "argumento nulo");
     ESP_RETURN_ON_FALSE(cfg->vref > 0.0f, ESP_ERR_INVALID_ARG, TAG, "vref debe ser > 0");
+    ESP_RETURN_ON_FALSE(cfg->address < 0x80, ESP_ERR_INVALID_ARG, TAG, "dirección de 7 bits inválida");
+    ESP_RETURN_ON_FALSE(cfg->scl_speed_hz > 0, ESP_ERR_INVALID_ARG, TAG, "scl_speed_hz debe ser > 0");
 
     esp_err_t err = i2c_master_probe(bus, cfg->address, cfg->timeout_ms);
     ESP_RETURN_ON_ERROR(err, TAG, "sin respuesta en 0x%02X", cfg->address);

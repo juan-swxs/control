@@ -1,0 +1,224 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands,es-nodecimaldot]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage[margin=2cm]{geometry}
+\setcounter{MaxMatrixCols}{12}
+\allowdisplaybreaks
+\begin{document}
+\section*{Cálculos -- Laboratorio 4}
+
+\subsection*{1. Planta}
+La entrada $u$ es el voltaje efectivo del motor, sin zona muerta, y la salida $x$ está en mm. Se usan $b=678.6$, $a_1=37.928$ y $a_2=430.986$ (campo \texttt{a0} del JSON); solo se redondea la presentación.
+\begin{gather*}
+G(s)=\frac{X(s)}{U(s)}=\frac{678.6}{s^2+37.93s+431.0}\\
+s^2+37.928s+430.986=0\;\Rightarrow\;s=-18.964\pm 8.447j\\
+K_{dc}=\frac{678.6}{430.986}=1.5745~\text{mm/V},\qquad t_{s,la}(2\%)=0.2335024~\text{s}\simeq 0.234~\text{s}\\
+x_1=x,\quad x_2=\dot x\\
+A=\begin{bmatrix}0 & 1 \\ -430.986 & -37.928\end{bmatrix},\quad B=\begin{bmatrix}0 \\ 678.6\end{bmatrix},\quad C=\begin{bmatrix}1 & 0\end{bmatrix},\quad D=0
+\end{gather*}
+El asentamiento se calcula simulando el escalón unitario con una malla de $10~\mu$s, valor final $b/a_2$ y banda de $\pm2\%$; se refina por bisección la última entrada definitiva en la banda.
+El valor nominal $0.211$ s corresponde a la aproximación $4/|\Re(p)|=0.210926$ s, no al asentamiento exacto al $2\%$: en ese instante el error relativo todavía es $3.6374\%$.
+\subsection*{2. Controlabilidad y observabilidad}
+\begin{gather*}
+S=[B\;\;AB]=\begin{bmatrix}0 & 678.6 \\ 678.6 & -25737.94\end{bmatrix},\quad\det S=-460498\ne0\\
+\mathcal O=\begin{bmatrix}C\\CA\end{bmatrix}=\begin{bmatrix}1 & 0 \\ 0 & 1\end{bmatrix},\quad\det\mathcal O=1\ne0
+\end{gather*}
+\subsection*{3. Especificaciones}
+\begin{gather*}
+t_{sd}=0.5~\text{s},\quad\zeta_d=0.8,\quad\omega_{nd}=\frac{4}{\zeta_dt_{sd}}=10~\text{rad/s}\\
+s^{2} + 16s + 100=0\;\Rightarrow\;s=-8\pm 6j\\
+p_{\text{lejano}}=10\zeta_d\omega_{nd}=80
+\end{gather*}
+El lazo abierto tiene un asentamiento nominal de $0.21$ s: pedir el $53\%$ de ese valor llevaría el polo lejano a $-358\simeq-360$ rad/s, incompatible con $T=10$ ms; con $t_{sd}=0.5$ s quedan $p_{\text{lejano}}T=0.8$ y $|p_o|T=1$.
+Con el asentamiento simulado, la misma regla daría $-323.2$ rad/s; se conserva la decisión de diseño de $t_{sd}=0.5$ s.
+\subsection*{4. Controlador Escalón ($m=1$)}
+\begin{gather*}
+\dot\rho=r-y,\qquad u=-K\mathbf x+K_i\rho\\
+\mathbf z=[x_1\;x_2\;\rho]^T,\qquad\hat K=[K_1\;K_2\;-K_i]\\
+\hat A=\begin{bmatrix}0 & 1 & 0 \\ -430.986 & -37.928 & 0 \\ -1 & 0 & 0\end{bmatrix},\quad\hat B=\begin{bmatrix}0 \\ 678.6 \\ 0\end{bmatrix}\\
+\hat S=\begin{bmatrix}0 & 678.6 & -25737.94 \\ 678.6 & -25737.94 & 683721.5 \\ 0 & 0 & -678.6\end{bmatrix}\\
+\det\hat S=3.124939\times10^{8}\ne0\\
+P_d(s)=(s^{2} + 16s + 100)(s+80)=s^{3} + 96s^{2} + 1380s + 8000
+\end{gather*}
+\paragraph{Método 1: asignación de polos}
+\begin{gather*}
+A^*=\hat A-\hat B\hat K=\begin{bmatrix}0&1&0\\-430.986-678.6K_1&-37.928-678.6K_2&678.6K_i\\-1&0&0\end{bmatrix}
+\end{gather*}
+\begin{gather*}
+sI-A^*=\begin{bmatrix}s&-1&0\\430.986+678.6K_1&s+37.928+678.6K_2&-678.6K_i\\1&0&s\end{bmatrix}
+\end{gather*}
+\begin{gather*}
+\begin{aligned}\det(sI-A^*)&=s^{3}+(37.928+678.6K_2)s^{2}+(430.986+678.6K_1)s^{1}\\&+678.6K_i\end{aligned}
+\end{gather*}
+\begin{align*}
+37.928+678.6K_2=96&\Rightarrow K_2=0.08557619\\
+430.986+678.6K_1=1380&\Rightarrow K_1=1.398488\\
+678.6K_i=8000&\Rightarrow K_i=11.78898
+\end{align*}
+\begin{gather*}
+\hat K=\begin{bmatrix}1.398488 & 0.08557619 & -11.78898\end{bmatrix}
+\end{gather*}
+\paragraph{Método 2: Ackermann}
+\begin{gather*}
+\phi(\hat A)=\hat A^{3} + 96\hat A^{2} + 1380\hat A + 8000I\\
+\phi(\hat A)=\begin{bmatrix}-17028.22 & -1253.541 & 0 \\ 540258.5 & 30516.08 & 0 \\ -949.014 & -58.072 & 8000\end{bmatrix}\\
+[0\;\cdots\;0\;1]\hat S^{-1}=\begin{bmatrix}0 & 0 & -0.001473622\end{bmatrix}\\
+\hat K=[0\;\cdots\;0\;1]\hat S^{-1}\phi(\hat A)=\begin{bmatrix}1.398488 & 0.08557619 & -11.78898\end{bmatrix}
+\end{gather*}
+\paragraph{Método 3: matriz de transformación}
+\begin{gather*}
+\det(sI-\hat A)=s^{3} + 37.928s^{2} + 430.986s\\
+\hat M=\begin{bmatrix}430.986 & 37.928 & 1 \\ 37.928 & 1 & 0 \\ 1 & 0 & 0\end{bmatrix}\\
+T=\hat S\hat M=\begin{bmatrix}0 & 678.6 & 0 \\ 0 & 0 & 678.6 \\ -678.6 & 0 & 0\end{bmatrix}\\
+T^{-1}=\begin{bmatrix}0 & 0 & -0.001473622 \\ 0.001473622 & 0 & 0 \\ 0 & 0.001473622 & 0\end{bmatrix}\\
+[\alpha_3-a_3\;\cdots\;\alpha_1-a_1]=\begin{bmatrix}8000 & 949.014 & 58.072\end{bmatrix}\\
+\hat K=\begin{bmatrix}8000 & 949.014 & 58.072\end{bmatrix}T^{-1}=\begin{bmatrix}1.398488 & 0.08557619 & -11.78898\end{bmatrix}\\
+\operatorname{eig}(\hat A-\hat B\hat K)=\{-80\;(1\text{ veces}),\;-8\pm 6j\}
+\end{gather*}
+\subsection*{5. Controlador Rampa ($m=2$)}
+\begin{gather*}
+\ddot\rho=r-y,\qquad u=-K\mathbf x+K_i\dot\rho+K_{i2}\rho\\
+\mathbf z=[x_1\;x_2\;\rho\;\dot\rho]^T,\qquad\hat K=[K_1\;K_2\;-K_{i2}\;-K_i]\\
+\hat A=\begin{bmatrix}0 & 1 & 0 & 0 \\ -430.986 & -37.928 & 0 & 0 \\ 0 & 0 & 0 & 1 \\ -1 & 0 & 0 & 0\end{bmatrix},\quad\hat B=\begin{bmatrix}0 \\ 678.6 \\ 0 \\ 0\end{bmatrix}\\
+\hat S=\begin{bmatrix}0 & 678.6 & -25737.94 & 683721.5 \\ 678.6 & -25737.94 & 683721.5 & -1.48395\times10^{7} \\ 0 & 0 & 0 & -678.6 \\ 0 & 0 & -678.6 & 25737.94\end{bmatrix}\\
+\det\hat S=2.120584\times10^{11}\ne0\\
+P_d(s)=(s^{2} + 16s + 100)(s+80)^{2}=s^{4} + 176s^{3} + 9060s^{2} + 118400s + 640000
+\end{gather*}
+\paragraph{Método 1: asignación de polos}
+\begin{gather*}
+A^*=\hat A-\hat B\hat K=\begin{bmatrix}0&1&0&0\\-430.986-678.6K_1&-37.928-678.6K_2&678.6K_{i2}&678.6K_i\\0&0&0&1\\-1&0&0&0\end{bmatrix}
+\end{gather*}
+\begin{gather*}
+\begin{aligned}\det(sI-A^*)&=s^{4}+(37.928+678.6K_2)s^{3}+(430.986+678.6K_1)s^{2}\\&+678.6K_is+678.6K_{i2}\end{aligned}
+\end{gather*}
+\begin{align*}
+37.928+678.6K_2=176&\Rightarrow K_2=0.203466\\
+430.986+678.6K_1=9060&\Rightarrow K_1=12.71591\\
+678.6K_i=118400&\Rightarrow K_i=174.4769\\
+678.6K_{i2}=640000&\Rightarrow K_{i2}=943.1182
+\end{align*}
+\begin{gather*}
+\hat K=\begin{bmatrix}12.71591 & 0.203466 & -943.1182 & -174.4769\end{bmatrix}
+\end{gather*}
+\paragraph{Método 2: Ackermann}
+\begin{gather*}
+\phi(\hat A)=\hat A^{4} + 176\hat A^{3} + 9060\hat A^{2} + 118400\hat A + 640000I\\
+\phi(\hat A)=\begin{bmatrix}-821999 & -69767.19 & 0 & 0 \\ 3.006868\times10^{7} & 1824131 & 0 & 0 \\ -8629.014 & -138.072 & 640000 & 118400 \\ -58892.9 & -3392.219 & 0 & 640000\end{bmatrix}\\
+[0\;\cdots\;0\;1]\hat S^{-1}=\begin{bmatrix}0 & 0 & -0.001473622 & 0\end{bmatrix}\\
+\hat K=[0\;\cdots\;0\;1]\hat S^{-1}\phi(\hat A)=\begin{bmatrix}12.71591 & 0.203466 & -943.1182 & -174.4769\end{bmatrix}
+\end{gather*}
+\paragraph{Método 3: matriz de transformación}
+\begin{gather*}
+\det(sI-\hat A)=s^{4} + 37.928s^{3} + 430.986s^{2}\\
+\hat M=\begin{bmatrix}0 & 430.986 & 37.928 & 1 \\ 430.986 & 37.928 & 1 & 0 \\ 37.928 & 1 & 0 & 0 \\ 1 & 0 & 0 & 0\end{bmatrix}\\
+T=\hat S\hat M=\begin{bmatrix}0 & 0 & 678.6 & 0 \\ -1.862645\times10^{-9} & 0 & 0 & 678.6 \\ -678.6 & 0 & 0 & 0 \\ 0 & -678.6 & 0 & 0\end{bmatrix}\\
+T^{-1}=\begin{bmatrix}0 & 0 & -0.001473622 & 0 \\ 0 & 0 & 0 & -0.001473622 \\ 0.001473622 & 0 & 0 & 0 \\ 0 & 0.001473622 & 0 & 0\end{bmatrix}\\
+[\alpha_4-a_4\;\cdots\;\alpha_1-a_1]=\begin{bmatrix}640000 & 118400 & 8629.014 & 138.072\end{bmatrix}\\
+\hat K=\begin{bmatrix}640000 & 118400 & 8629.014 & 138.072\end{bmatrix}T^{-1}=\begin{bmatrix}12.71591 & 0.203466 & -943.1182 & -174.4769\end{bmatrix}\\
+\operatorname{eig}(\hat A-\hat B\hat K)=\{-80\;(2\text{ veces}),\;-8\pm 6j\}
+\end{gather*}
+\subsection*{6. Controlador Parábola ($m=3$)}
+\begin{gather*}
+\dddot\rho=r-y,\qquad u=-K\mathbf x+K_i\ddot\rho+K_{i2}\dot\rho+K_{i3}\rho\\
+\mathbf z=[x_1\;x_2\;\rho\;\dot\rho\;\ddot\rho]^T,\qquad\hat K=[K_1\;K_2\;-K_{i3}\;-K_{i2}\;-K_i]\\
+\hat A=\begin{bmatrix}0 & 1 & 0 & 0 & 0 \\ -430.986 & -37.928 & 0 & 0 & 0 \\ 0 & 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 0 & 1 \\ -1 & 0 & 0 & 0 & 0\end{bmatrix},\quad\hat B=\begin{bmatrix}0 \\ 678.6 \\ 0 \\ 0 \\ 0\end{bmatrix}\\
+\hat S=\begin{bmatrix}0 & 678.6 & -25737.94 & 683721.5 & -1.48395\times10^{7} \\ 678.6 & -25737.94 & 683721.5 & -1.48395\times10^{7} & 2.681581\times10^{8} \\ 0 & 0 & 0 & 0 & -678.6 \\ 0 & 0 & 0 & -678.6 & 25737.94 \\ 0 & 0 & -678.6 & 25737.94 & -683721.5\end{bmatrix}\\
+\det\hat S=-1.439028\times10^{14}\ne0\\
+P_d(s)=(s^{2} + 16s + 100)(s+80)^{3}=s^{5} + 256s^{4} + 23140s^{3} + 843200s^{2} + 1.0112\times10^{7}s + 5.12\times10^{7}
+\end{gather*}
+\paragraph{Método 1: asignación de polos}
+\begin{gather*}
+A^*=\hat A-\hat B\hat K=\begin{bmatrix}0&1&0&0&0\\-430.986-678.6K_1&-37.928-678.6K_2&678.6K_{i3}&678.6K_{i2}&678.6K_i\\0&0&0&1&0\\0&0&0&0&1\\-1&0&0&0&0\end{bmatrix}
+\end{gather*}
+\begin{gather*}
+\begin{aligned}\det(sI-A^*)&=s^{5}+(37.928+678.6K_2)s^{4}+(430.986+678.6K_1)s^{3}\\&+678.6K_is^{2}+678.6K_{i2}s+678.6K_{i3}\end{aligned}
+\end{gather*}
+\begin{align*}
+37.928+678.6K_2=256&\Rightarrow K_2=0.3213557\\
+430.986+678.6K_1=23140&\Rightarrow K_1=33.46451\\
+678.6K_i=843200&\Rightarrow K_i=1242.558\\
+678.6K_{i2}=1.0112\times10^{7}&\Rightarrow K_{i2}=14901.27\\
+678.6K_{i3}=5.12\times10^{7}&\Rightarrow K_{i3}=75449.45
+\end{align*}
+\begin{gather*}
+\hat K=\begin{bmatrix}33.46451 & 0.3213557 & -75449.45 & -14901.27 & -1242.558\end{bmatrix}
+\end{gather*}
+\paragraph{Método 2: Ackermann}
+\begin{gather*}
+\phi(\hat A)=\hat A^{5} + 256\hat A^{4} + 23140\hat A^{3} + 843200\hat A^{2} + 1.0112\times10^{7}\hat A + 5.12\times10^{7}I\\
+\phi(\hat A)=\begin{bmatrix}-3.569124\times10^{7} & -3757244 & 0 & 0 & 0 \\ 1.61932\times10^{9} & 1.068135\times10^{8} & 0 & 0 & 0 \\ -22709.01 & -218.072 & 5.12\times10^{7} & 1.0112\times10^{7} & 843200 \\ -749214 & -14437.98 & 0 & 5.12\times10^{7} & 1.0112\times10^{7} \\ -3889433 & -201610.3 & 0 & 0 & 5.12\times10^{7}\end{bmatrix}\\
+[0\;\cdots\;0\;1]\hat S^{-1}=\begin{bmatrix}0 & 0 & -0.001473622 & 0 & 0\end{bmatrix}\\
+\hat K=[0\;\cdots\;0\;1]\hat S^{-1}\phi(\hat A)=\begin{bmatrix}33.46451 & 0.3213557 & -75449.45 & -14901.27 & -1242.558\end{bmatrix}
+\end{gather*}
+\paragraph{Método 3: matriz de transformación}
+\begin{gather*}
+\det(sI-\hat A)=s^{5} + 37.928s^{4} + 430.986s^{3}\\
+\hat M=\begin{bmatrix}0 & 0 & 430.986 & 37.928 & 1 \\ 0 & 430.986 & 37.928 & 1 & 0 \\ 430.986 & 37.928 & 1 & 0 & 0 \\ 37.928 & 1 & 0 & 0 & 0 \\ 1 & 0 & 0 & 0 & 0\end{bmatrix}\\
+T=\hat S\hat M=\begin{bmatrix}-1.862645\times10^{-9} & 0 & 0 & 678.6 & 0 \\ 2.980232\times10^{-8} & -1.862645\times10^{-9} & 0 & 0 & 678.6 \\ -678.6 & 0 & 0 & 0 & 0 \\ 0 & -678.6 & 0 & 0 & 0 \\ 0 & 0 & -678.6 & 0 & 0\end{bmatrix}\\
+T^{-1}=\begin{bmatrix}0 & 0 & -0.001473622 & 0 & 0 \\ 0 & 0 & 0 & -0.001473622 & 0 \\ 0 & 0 & 0 & 0 & -0.001473622 \\ 0.001473622 & 0 & 0 & 0 & 0 \\ 0 & 0.001473622 & 0 & 0 & 0\end{bmatrix}\\
+[\alpha_5-a_5\;\cdots\;\alpha_1-a_1]=\begin{bmatrix}5.12\times10^{7} & 1.0112\times10^{7} & 843200 & 22709.01 & 218.072\end{bmatrix}\\
+\hat K=\begin{bmatrix}5.12\times10^{7} & 1.0112\times10^{7} & 843200 & 22709.01 & 218.072\end{bmatrix}T^{-1}=\begin{bmatrix}33.46451 & 0.3213557 & -75449.45 & -14901.27 & -1242.558\end{bmatrix}\\
+\operatorname{eig}(\hat A-\hat B\hat K)=\{-80\;(3\text{ veces}),\;-8\pm 6j\}
+\end{gather*}
+\subsection*{7. Observador}
+\begin{gather*}
+t_{s,o}=\frac{t_{sd}}{10}=0.05~\text{s},\quad\zeta_o=0.8,\quad\omega_{no}=\frac{4}{\zeta_ot_{s,o}}=100~\text{rad/s}\\
+P_o(s)=s^{2} + 160s + 10000\;\Rightarrow\;s=-80\pm 60j
+\end{gather*}
+\paragraph{Método 1}
+\begin{gather*}
+A-LC=\begin{bmatrix}-L_1&1\\-430.986-L_2&-37.928\end{bmatrix}\\
+sI-(A-LC)=\begin{bmatrix}s+L_1&-1\\430.986+L_2&s+37.928\end{bmatrix}\\
+\det=s^2+(L_1+37.928)s+(37.928L_1+430.986+L_2)
+\end{gather*}
+\begin{align*}
+L_1+37.928=160&\Rightarrow L_1=122.072\\
+37.928(122.072)+430.986+L_2=10000&\Rightarrow L_2=4939.067
+\end{align*}
+\paragraph{Método 2: matriz de transformación}
+\begin{gather*}
+M=\begin{bmatrix}37.928 & 1 \\ 1 & 0\end{bmatrix},\quad Q=(M\mathcal O)^{-1}=\begin{bmatrix}0 & 1 \\ 1 & -37.928\end{bmatrix}\\
+L=Q\begin{bmatrix}9569.014 \\ 122.072\end{bmatrix}=\begin{bmatrix}122.072 \\ 4939.067\end{bmatrix}
+\end{gather*}
+\paragraph{Método 3: Ackermann}
+\begin{gather*}
+\phi(A)=A^2+160A+10000I=\begin{bmatrix}9569.014 & 122.072 \\ -52611.32 & 4939.067\end{bmatrix}\\
+L=\phi(A)\mathcal O^{-1}\begin{bmatrix}0\\1\end{bmatrix}=\begin{bmatrix}122.072 \\ 4939.067\end{bmatrix}\\
+\operatorname{eig}(A-LC)=\{-80\pm 60j\}
+\end{gather*}
+\subsection*{8. Error en estado estable}
+\begin{gather*}
+\frac{E(s)}{R(s)}=\frac{s^m[s^2+(a_1+bK_2)s+(a_2+bK_1)]}{P_d(s)}\\
+m=1,\quad r=\dot r\,t:\quad e_{ss}=0.1725\dot r,\quad\dot r=2~\text{mm/s}\Rightarrow e_{ss}=0.345~\text{mm}\\
+m=2,\quad r=\tfrac12\ddot r\,t^2:\quad e_{ss}=0.01415625\ddot r\\
+m=2,\quad r=2t:\quad e_{ss}=0,\qquad m=3,\quad r=\tfrac12\ddot r\,t^2:\quad e_{ss}=0
+\end{gather*}
+Para una parábola de aceleración constante $\ddot r$ en mm/s$^2$, el error de $m=1$ no tiene límite finito si $\ddot r\ne0$; su término creciente es $0.1725\ddot r\,t$. Los resultados suponen el modelo lineal sin saturación.
+\subsection*{9. Implementación digital}
+El ESP32 mide la cuenta acumulada $N[k]$ del encoder. Con $T=10$ ms, referencia y posición en mm, velocidad en mm/s y $u$ en V efectivos:
+\begin{gather*}
+x[k]=0.06712N[k],\qquad v_{\mathrm{dif}}[k]=\frac{x[k]-x[k-1]}{0.01}\\
+v[k]=0.7v[k-1]+0.3v_{\mathrm{dif}}[k]\\
+\rho[k]=\rho[k-1]+0.01(r[k]-x[k])\qquad\text{(Euler hacia atrás)}\\
+u[k]=-K_1x[k]-K_2v[k]+K_i\rho[k]\\
+u[k]=-1.398488x[k]-0.08557619v[k]+11.78898\rho[k]
+\end{gather*}
+\begin{gather*}
+u_0(u)=\begin{cases}0~\text{V},&u>0\\1.1~\text{V},&u<0\\0,&u=0\end{cases},\qquad\operatorname{sign}(0)=0\\
+V_{m,0}[k]=u[k]+u_0(u[k])\operatorname{sign}(u[k])\\
+V_m[k]=\min(7.5,\max(-7.5,V_{m,0}[k]))\\
+\mathrm{DAC}[k]=\operatorname{clip}_{[0,4095]}\!\left(\operatorname{round}\!\left(2048+\frac{V_m[k]}{4.7}\frac{4096}{3.3}\right)\right)
+\end{gather*}
+Para el observador se usa $y[k]=x[k]$ y $u[k]$ efectivo; si actúa la saturación se reconstruye a partir del voltaje aplicado descontando la zona muerta. La recursión siguiente usa Euler hacia adelante y los dos estados del instante $k$ simultáneamente:
+\begin{gather*}
+\hat{\mathbf x}[k+1]=\hat{\mathbf x}[k]+T[(A-LC)\hat{\mathbf x}[k]+Bu[k]+Ly[k]]\\
+\hat{\mathbf x}[k+1]=\begin{bmatrix}-0.22072 & 0.01 \\ -53.70053 & 0.62072\end{bmatrix}\hat{\mathbf x}[k]+\begin{bmatrix}0 \\ 6.786\end{bmatrix}u[k]+\begin{bmatrix}1.22072 \\ 49.39067\end{bmatrix}y[k]\\
+\hat x_1[k+1]=-0.22072\hat x_1[k]+0.01\hat x_2[k]+1.22072y[k]\\
+\hat x_2[k+1]=-53.70053\hat x_1[k]+0.62072\hat x_2[k]+6.786u[k]+49.39067y[k]\\
+\operatorname{eig}(I+T(A-LC))=\{0.2\pm 0.6j\},\quad |\lambda|=0.6324555<1
+\end{gather*}
+Por tanto, el error del observador discretizado converge en el modelo ideal. Esta comprobación corresponde al observador; la saturación, la zona muerta y el filtro EMA añaden efectos al controlador implementado.
+Las tres fórmulas de cada controlador y del observador coinciden numéricamente. Se comprueban también los polinomios característicos y los autovalores usando ganancias sin redondear; la separación numérica de polos repetidos se tolera hasta $0.01$ rad/s.
+\end{document}

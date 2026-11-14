@@ -3,105 +3,255 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Control DAC · ESP32</title>
+<title>Lab 4, realimentación de estados</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="htrevisa que los mudtps://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600&family=Barlow+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+<!-- cintas de vidrio del fondo -->
+<svg class="ribbons" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <path d="M-80 640 C 260 520, 520 760, 860 600 S 1380 380, 1560 470" />
+  <path d="M-80 700 C 300 600, 560 820, 900 660 S 1400 470, 1560 560" />
+  <path class="thin" d="M-80 560 C 340 430, 640 700, 1000 520 S 1420 300, 1560 360" />
+</svg>
 
 <div id="toasts" class="toasts" aria-live="polite"></div>
 
 <div class="wrap">
 
-  <header>
-    <div>
-      <p class="eyebrow">Piñón · Cremallera</p>
-      <h1>Control DAC</h1>
+  <!-- ===== Encabezado ===== -->
+  <header class="top">
+    <div class="brand">
+      <p class="kicker">Laboratorio 4, sistema piñón-cremallera</p>
+      <h1>Realimentación de estados</h1>
+      <p class="law">u = −K<sub>1</sub>x − K<sub>2</sub>ẋ + K<sub>i</sub>∫(r − x) dt</p>
     </div>
     <div class="connect">
       <span class="status"><i class="dot" id="dot"></i><span id="st">Desconectado</span></span>
-      <button class="btn" id="btnConn">Conectar</button>
+      <button class="btn primary" id="btnConn">Conectar</button>
     </div>
   </header>
 
-  <section class="modebar">
-    <div class="modebar-text">
-      <p class="eyebrow">Sentido de medición · GPIO25</p>
+  <div id="banner" class="banner hidden"></div>
+
+  <!-- ===== Cremallera en vivo: x avanza hacia r ===== -->
+  <section class="screen rack-panel" aria-label="Posición y referencia sobre la cremallera">
+    <div class="rack-head">
+      <div class="bar-group limits">
+        <span class="bar-label">Recorrido medido</span>
+        <span class="lim neg"><b id="limXmin">−6.4</b> mm</span>
+        <span class="lim-sep">a</span>
+        <span class="lim pos"><b id="limXmax">+10.5</b> mm</span>
+        <span class="bar-label">· referencia</span>
+        <span class="lim neg"><b id="limRmin">−5</b></span>
+        <span class="lim-sep">a</span>
+        <span class="lim pos"><b id="limRmax">+9</b> mm</span>
+      </div>
+      <div class="bar-group">
+        <span class="pill" id="pillMcp" title="Módulos de las salidas P y V">MCP4725 sin datos</span>
+        <span class="pill warn hidden" id="pillTest">Modo prueba: P y V fijas</span>
+        <button class="btn ghost small" id="btnZero" title="La posición actual pasa a ser 0 mm">Fijar cero</button>
+      </div>
     </div>
-    <div class="toggle neg" id="toggle">
-      <span class="toggle-thumb"></span>
-      <button class="toggle-opt" data-dir="POS" id="optPos">▲ Positivo</button>
-      <button class="toggle-opt active" data-dir="NEG" id="optNeg">▼ Negativo</button>
+
+    <div class="rack">
+      <div class="rack-teeth"></div>
+      <i class="rack-zero" id="rz"></i>
+      <i class="rack-fill" id="bx"></i>
+      <b class="rack-flag" id="mr"></b>
+    </div>
+    <div class="rack-scale" id="rackScale"></div>
+
+    <div class="readouts">
+      <div class="ro ro-x">
+        <p class="ro-name"><i></i>Posición x</p>
+        <p class="num" id="x">0.000<span>mm</span></p>
+        <p class="foot" id="xfoot">−6.4 a +10.5 mm</p>
+      </div>
+      <div class="ro ro-r">
+        <p class="ro-name"><i></i>Referencia r</p>
+        <p class="num" id="r">0.000<span>mm</span></p>
+        <div class="track"><i id="br"></i></div>
+        <p class="foot" id="rfoot">Vr = 0.000 V</p>
+      </div>
+      <div class="ro ro-e">
+        <p class="ro-name"><i></i>Error r − x</p>
+        <p class="num" id="e">0.000<span>mm</span></p>
+        <div class="track center"><i id="be"></i></div>
+        <p class="foot" id="efoot">E = 0.000 V</p>
+      </div>
+      <div class="ro ro-v">
+        <p class="ro-name"><i></i>Velocidad ẋ</p>
+        <p class="num" id="v">0.00<span>mm/s</span></p>
+        <div class="track center"><i id="bv"></i></div>
+        <p class="foot" id="vfoot">V = 0.000 V</p>
+      </div>
     </div>
   </section>
 
-  <div id="banner" class="banner hidden"></div>
-
+  <!-- ===== Gráfica + referencia ===== -->
   <div class="main-grid">
 
-    <div class="col-main">
-      <section class="grid">
-        <article class="stat">
-          <p class="eyebrow">Distancia</p>
-          <p class="num" id="x">0.000<span>mm</span></p>
-          <div class="track"><i id="bx"></i></div>
-          <p class="foot" id="vel">0.00 mm/s</p>
-        </article>
-
-        <article class="stat">
-          <p class="eyebrow">DAC auto <em>GPIO25</em></p>
-          <p class="num" id="va">0.000<span>V</span></p>
-          <div class="track"><i id="ba"></i></div>
-          <p class="foot" id="ra">raw 0/255</p>
-        </article>
-
-        <article class="stat">
-          <p class="eyebrow">DAC manual <em>GPIO26</em></p>
-          <p class="num accent" id="vm">0.000<span>V</span></p>
-          <div class="track"><i class="accent" id="bm"></i></div>
-          <p class="foot" id="rm">raw 0/255</p>
-        </article>
-      </section>
-
-      <section class="panel dark grow">
-        <div class="panel-head">
-          <p class="eyebrow light">Desplazamiento</p>
-          <span class="pill light" id="win">30 s</span>
-        </div>
-        <canvas id="cv"></canvas>
-      </section>
-    </div>
-
-    <div class="col-side">
-      <section class="panel dark fill">
-        <div class="panel-head">
-          <div>
-            <p class="eyebrow light">Salida manual</p>
-            <p class="num accent" id="sv">0.000<span>V</span></p>
+    <section class="screen chart-panel">
+      <div class="panel-head">
+        <div>
+          <h2>Respuesta en el tiempo</h2>
+          <div class="legend">
+            <span><i class="sw ref"></i>r referencia <b id="lgR"></b></span>
+            <span><i class="sw pos"></i>x posición <b id="lgX"></b></span>
+            <span><i class="sw vel"></i>ẋ velocidad <b id="lgV"></b></span>
+            <span><i class="sw err"></i>error r − x</span>
+            <span><i class="sw band"></i>banda del 2 %</span>
           </div>
-          <span class="pill light" id="sraw">raw 0/255</span>
         </div>
+        <div class="chart-tools">
+          <div class="seg" id="segWin">
+            <button data-win="5">5 s</button>
+            <button data-win="10" class="active">10 s</button>
+            <button data-win="30">30 s</button>
+          </div>
+          <button class="icon-btn" id="btnPause" title="Pausar gráfica">❚❚</button>
+        </div>
+      </div>
+      <div class="charts">
+        <canvas id="cvPos"></canvas>
+        <canvas id="cvVel"></canvas>
+        <div class="cursor-read hidden" id="cursorRead"></div>
+        <div class="chart-empty" id="chartEmpty">
+          <p class="ce-title">Esta es la respuesta de diseño</p>
+          <p class="ce-text">Escalón a 5 mm: se establece en <b>0.39 s</b> con <b>1.5 %</b> de sobrepico. Conecta el ESP32 y tu sistema real aparecerá encima.</p>
+          <button class="btn primary" id="btnConnEmpty">Conectar el ESP32</button>
+        </div>
+      </div>
+    </section>
 
-        <div class="slider-box">
-          <div class="bubble" id="bubble">0.00 V</div>
-          <input type="range" id="sl" min="0" max="255" value="0" step="1">
-          <div class="ticks"><i></i><i></i><i></i><i></i><i></i></div>
+    <section class="glass ref-panel">
+      <div class="panel-head">
+        <div>
+          <h2>Referencia</h2>
+          <p class="num big" id="sv">0.00<span>mm</span></p>
         </div>
-        <div class="scale"><span>0 V</span><span>0.825 V</span><span>1.65 V</span><span>2.475 V</span><span>3.3 V</span></div>
+        <span class="pill" id="svv">Vr 0.000 V</span>
+      </div>
 
-        <div class="btns">
-          <button data-mv="0">0 V</button>
-          <button data-mv="825">0.8 V</button>
-          <button data-mv="1650">1.65 V</button>
-          <button data-mv="2475">2.5 V</button>
-          <button data-mv="3300">3.3 V</button>
-          <button class="ghost" id="bz">Cero</button>
+      <div class="slider-box">
+        <div class="bubble" id="bubble">0.00 mm</div>
+        <input type="range" id="sl" min="-5" max="9" value="0" step="0.05" aria-label="Referencia en mm">
+        <div class="ticks"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="scale" id="slScale"></div>
+
+      <div class="presets">
+        <button data-mm="-5" data-lim="min" title="Referencia mínima">−5 mm<small>máx. negativo</small></button>
+        <button data-mm="0" class="star" title="Volver al centro">0 mm<small>centro</small></button>
+        <button data-mm="5" title="Escalón de diseño">5 mm<small>escalón</small></button>
+        <button data-mm="9" data-lim="max" title="Referencia máxima">9 mm<small>máx. positivo</small></button>
+      </div>
+
+      <div class="apply-row">
+        <label class="input-unit">
+          <input type="number" id="inMm" min="-5" max="9" step="0.01" value="0">
+          <span>mm</span>
+        </label>
+        <button class="btn primary" id="btnApply">Enviar referencia</button>
+      </div>
+
+      <p class="ref-note">El ESP32 calcula la realimentación de estados <b>u = −K₁x − K₂ẋ + K<sub>i</sub>∫(r − x)</b> cada 10 ms y la manda por ESP-NOW al MCP4725 #3, que mueve el motor con el push-pull. Se mueve hacia los dos lados: escribe una referencia negativa o positiva.</p>
+    </section>
+  </div>
+
+  <!-- ===== Salidas, prueba de escalón, banco ===== -->
+  <div class="bottom-grid">
+
+    <section class="glass outs">
+      <h2>Salidas hacia el circuito</h2>
+      <div class="out-row">
+        <div class="out-meta"><span class="tag p">MCP #1</span><b>P</b><small>posición</small></div>
+        <p class="num mid" id="pv">0.000<span>V</span></p>
+        <div class="track p"><i id="bp"></i></div>
+        <p class="foot" id="pfoot">raw 0/4095, 0.4125 V/mm</p>
+      </div>
+      <div class="out-row">
+        <div class="out-meta"><span class="tag v">MCP #2</span><b>V</b><small>velocidad</small></div>
+        <p class="num mid" id="vv">0.000<span>V</span></p>
+        <div class="track v"><i id="bvv"></i></div>
+        <p class="foot" id="vvfoot">raw 0/4095, 0.1 V/(mm/s)</p>
+      </div>
+      <div class="out-row">
+        <div class="out-meta"><span class="tag r">MCP #3</span><b>u</b><small>al push-pull</small></div>
+        <p class="num mid" id="vr">0.000<span>V</span></p>
+        <div class="track r"><i id="bvr"></i></div>
+        <p class="foot" id="vrfoot">ESP32 de referencia por ESP-NOW</p>
+      </div>
+    </section>
+
+    <section class="glass step">
+      <div class="panel-head">
+        <div>
+          <h2>Prueba de escalón</h2>
+          <p class="hint">Graba la respuesta y calcula t<sub>s</sub>, M<sub>p</sub> y e<sub>ss</sub>.</p>
         </div>
-      </section>
-    </div>
+        <select id="selDur" class="select" aria-label="Duración de la grabación">
+          <option value="2">2 s</option>
+          <option value="4" selected>4 s</option>
+          <option value="8">8 s</option>
+        </select>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn dark" id="btnStep">Enviar escalón a 5 mm y grabar</button>
+        <button class="btn outline" id="btnRec">● Grabar</button>
+      </div>
+      <div class="progress hidden" id="recProg"><i id="recBar"></i></div>
+      <p class="hint" id="recInfo">Elige la referencia arriba (negativa o positiva) y pulsa “Enviar escalón y grabar”: la grabación arranca, r cambia al instante y t₀ es el momento del cambio.</p>
+
+      <table class="metrics">
+        <thead><tr><th></th><th>Medido</th><th>Diseño</th></tr></thead>
+        <tbody>
+          <tr><td>t<sub>s</sub> (2 %)</td><td id="mTs">—</td><td>0.39 s</td></tr>
+          <tr><td>M<sub>p</sub></td><td id="mMp">—</td><td>1.5 %</td></tr>
+          <tr><td>t<sub>r</sub> (10–90 %)</td><td id="mTr">—</td><td>—</td></tr>
+          <tr><td>e<sub>ss</sub></td><td id="mEss">—</td><td>0 mm</td></tr>
+          <tr><td>ẋ máx</td><td id="mVmax">—</td><td>—</td></tr>
+        </tbody>
+      </table>
+      <button class="btn outline full" id="btnCsv" disabled>↓ Descargar CSV</button>
+    </section>
+
+    <section class="glass bench" id="bench">
+      <h2>Pruebas de banco</h2>
+      <p class="hint">Fija P y V para medir el circuito con multímetro. Motor desconectado y S1 cerrado.</p>
+
+      <div class="bench-inputs">
+        <label>P en MCP #1<span class="input-unit"><input type="number" id="inP" min="0" max="3300" step="1" value="2063"><span>mV</span></span></label>
+        <label>V en MCP #2<span class="input-unit"><input type="number" id="inV" min="0" max="3300" step="1" value="0"><span>mV</span></span></label>
+      </div>
+      <div class="bench-presets">
+        <button data-p="2063" data-v="0">P = 2.063 V<small>u ≈ −5.29 V</small></button>
+        <button data-p="0" data-v="2000">V = 2.0 V<small>u ≈ −1.40 V</small></button>
+        <button data-p="0" data-v="0">Todo en 0<small>u ≈ 0 V</small></button>
+      </div>
+      <div class="btn-row">
+        <button class="btn dark" id="btnTest">Fijar salidas</button>
+        <button class="btn outline" id="btnAuto">Volver a encoder</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <h2>Calibrar salidas</h2>
+      <div class="apply-row">
+        <label class="input-unit"><input type="number" id="inVdd" min="2700" max="5500" step="1" value="3300"><span>mV</span></label>
+        <button class="btn outline" id="btnVdd">Guardar Vdd</button>
+      </div>
+      <p class="hint">Mide Vdd de los MCP4725 con el multímetro y escríbelo: así P y V salen con la escala exacta.</p>
+    </section>
 
   </div>
 
-  <footer>USB Serial · 115200 baudios · sin WiFi</footer>
+  <footer>USB serie a 115200 baudios. Funciona en Chrome o Edge.</footer>
 </div>
 
 <script src="script.js" defer></script>
